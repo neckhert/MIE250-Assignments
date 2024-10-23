@@ -7,6 +7,7 @@ abstract class ObjectiveFunction{
 
     public ObjectiveFunction(String name){
         this.name=name;
+        System.out.println(name);
     }
     
     abstract double compute(double[] variables);
