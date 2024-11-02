@@ -1,7 +1,7 @@
 import java.util.Scanner;
 import java.io.*;
 import java.lang.Math;
-
+import java.math.*;
 
 abstract class ObjectiveFunction{
     
@@ -44,7 +44,7 @@ class QuadraticFunction extends ObjectiveFunction{
     double[] computeGradient(double[] variables){
         double[] outputs = new double[variables.length];
         for (int i=0; i<variables.length; i++){
-            outputs[i]=2*variables[i];
+            outputs[i]=SteepestDescentOptimizer.floorTo5Decimals(2*variables[i]);
         }
         return outputs;
     }
@@ -84,11 +84,50 @@ class RosenbrockFunction extends ObjectiveFunction{
                 outputs[i]*=-400*variables[i];
                 outputs[i]-=2*(1-variables[i]);
             }
+            outputs[i]=SteepestDescentOptimizer.floorTo5Decimals(outputs[i]);
         }
-
         return outputs;
     }
 
+}
+
+class Rosenbrock_Bonus extends ObjectiveFunction{
+    public Rosenbrock_Bonus(){
+        super("Rosenbrock_Bonus");
+    }
+
+    @Override
+    double compute(double [] variables){
+        double output=0;
+
+        for(int i=0; i<variables.length-1; i++){
+            double x = variables[i];
+            x*=x;
+            x=variables[i+1]-x;
+            x*=x;
+            x*=100;
+            x+=(1-variables[i])*(1-variables[i]);
+            output+=x;
+        }
+        
+        return output;
+    }
+
+    @Override
+    double[] computeGradient(double[] variables){
+        double[] outputs = new double[variables.length];
+        for (int i=0; i<variables.length; i++){
+            if (i==0){
+                outputs[i]=-400*(variables[i+1]-Math.pow(variables[i],2))+2*(variables[i]-1);
+            }else if(i==variables.length-1){
+                outputs[i]=200*(variables[i]-Math.pow(variables[i-1],2));
+            }else{
+                outputs[i]=-400*(variables[i+1]-Math.pow(variables[i],2))+2*(variables[i]-1)+200*(variables[i]-Math.pow(variables[i-1],2));
+            }
+            outputs[i]=SteepestDescentOptimizer.floorTo5Decimals(outputs[i]);
+        }
+        return outputs;
+    }
 }
 
 class OptimizationInputs{
@@ -148,9 +187,11 @@ class Output{
 
 class SteepestDescentOptimizer{
 
-    static double round(double x){
-        x = Math.floor(x * Math.pow(10,5));
-        return x/Math.pow(10,5);
+    static double floorTo5Decimals(double value){
+        //BigDecimal bd = new BigDecimal(value).setScale(5, RoundingMode.FLOOR);
+        //return bd.doubleValue();
+        double scale = Math.pow(10,5);
+        return Math.round(value * scale)/scale;
     }
     static double[] optimizeSteepestDescent(ObjectiveFunction objectiveFunction, double[] variables, int numIterations, double tolerance, double stepSize, int dimensionality, String fileName){
         
@@ -185,9 +226,9 @@ class SteepestDescentOptimizer{
                 int iteration = i+1;
                 String prompt = null; 
                 for (double variable: variables){
-                    variable = round(variable);
+                    variable = floorTo5Decimals(variable);
                 }
-                gradientnorm = round(gradientnorm);
+                gradientnorm = floorTo5Decimals(gradientnorm);
 
                 if(iteration != 1 && gradientnorm<tolerance){
                     prompt = "\nConvergence reached after "+ iteration + " iterations.\n";
@@ -197,13 +238,13 @@ class SteepestDescentOptimizer{
                     prompt = "\nMaximum iterations reached without satisfying the tolerance.\n";
                 }
                 if(fileName != null){
-                    Output.printOutputs(iteration, round(objectiveFunction.compute(variables)), variables, prompt, gradientnorm, fileName, writer);
+                    Output.printOutputs(iteration, objectiveFunction.compute(variables), variables, prompt, gradientnorm, fileName, writer);
                     if (i==numIterations-1){
                         writer.write("\nOptimization process completed.\n");
                         writer.close();
                     }
                 }else{
-                    Output.printOutputs(iteration, round(objectiveFunction.compute(variables)), variables, prompt, gradientnorm, fileName);
+                    Output.printOutputs(iteration, objectiveFunction.compute(variables), variables, prompt, gradientnorm, fileName);
                     if (i==numIterations-1){
                         System.out.print("\nOptimization process completed.\n");
                     }        
@@ -362,8 +403,10 @@ class SteepestDescentOptimizer{
                 reader.close();
         }catch(FileNotFoundException e){
             System.out.println("Error reading the file");
+            inputs.isValid = false;
         }catch(IOException e){
             System.out.println("Error reading the file");
+            inputs.isValid = false;
         }catch(IllegalArgumentException e){
             System.out.printf("Error: " + e.getMessage());
             inputs.isValid=false;
@@ -416,10 +459,5 @@ public class asst2_eckhertn{
         }else{
             System.out.println("\nExiting Program...");
         }
-
-
-       
-
     }
-
 }
