@@ -1,5 +1,7 @@
 import java.util.Scanner;
+import java.io.*;
 import java.lang.Math;
+
 
 abstract class ObjectiveFunction{
     
@@ -32,8 +34,8 @@ class QuadraticFunction extends ObjectiveFunction{
     @Override
     double compute(double[] variables){
         double output=0;
-        for (int i=0; i<variables.length; i++){
-            output+=variables[i]*variables[i];
+        for (double variable : variables){
+            output+=Math.pow(variable,2);
         }
         return output;
     }
@@ -51,7 +53,7 @@ class QuadraticFunction extends ObjectiveFunction{
 class RosenbrockFunction extends ObjectiveFunction{
 
     public RosenbrockFunction(){
-        super("rosenbrock");
+        super("Rosenbrock");
     }
 
     @Override
@@ -101,74 +103,130 @@ class OptimizationInputs{
 
 }
 
-abstract class Output{
-    abstract void printOutputs(int iteration, double OFValue, double[] x, String prompt);
-}
-
-class ConsoleOutput extends Output{
-    
-    @Override
-    public void printOutputs(int iteration, double OFValue, double[] x, String prompt){
+class Output{
+    static public void printOutputs(int iteration, double OFValue, double[] x, String prompt, double gradientnorm, String fileName){
         System.out.println();
         if (iteration==1){
-            System.out.print("\nOptimization Process:");
+            System.out.print("\n\nOptimization Process:");
+            System.out.print("\nIteration 1:");
+        }else{
+            System.out.printf("\n\nIteration %d:", iteration);
         }
-        System.out.printf("\nIteration %d:", iteration);
         System.out.printf("\nObjective Function Value: %.5f", OFValue);
         System.out.print("\nx-values: ");
         for (double value : x){
             System.out.printf("%.5f ", value);
+        }
+        if (iteration != 1){
+        System.out.printf("\nCurrent Tolerance: %.5f", gradientnorm);
         }
         if (prompt != null){
             System.out.print("\n"+prompt);
         }
     }
 
-}
-
-class FileOutput extends Output{
-    public void printOutputs(int iteration, double OFValue, double[] x, String prompt){}
+    static public void printOutputs(int iteration, double OFValue, double[] x, String prompt, double gradientnorm, String fileName, PrintWriter writer){
+        if (iteration==1){
+            writer.write("\n\nOptimization Process:");
+            writer.write("\nIteration 1:");
+        }else{
+            writer.format("\n\nIteration %d:", iteration);
+        }
+        writer.format("\nObjective Function Value: %.5f", OFValue);
+        writer.format("\nx-values: ");
+        for (double value : x){
+            writer.format("%.5f ", value);
+        }
+        if (iteration != 1){
+            writer.format("\nCurrent Tolerance: %.5f", gradientnorm);
+        }
+        if (prompt != null){
+            writer.write("\n"+prompt);
+        }
+    }
 }
 
 class SteepestDescentOptimizer{
 
-    static double[] optimizeSteepestDescent(ObjectiveFunction objectiveFunction, double[] variables, int iterations, double tolerance, double stepSize, int dimensionality, int outputType){
+    static double round(double x){
+        x = Math.floor(x * Math.pow(10,5));
+        return x/Math.pow(10,5);
+    }
+    static double[] optimizeSteepestDescent(ObjectiveFunction objectiveFunction, double[] variables, int numIterations, double tolerance, double stepSize, int dimensionality, String fileName){
         
         double[] gradients=objectiveFunction.computeGradient(variables);
-        double gradientnorm=computeGradientNorm(gradients);
-        Output output;
-        if (outputType==1){
-            output = new ConsoleOutput();
-        }else{
-            output = new FileOutput();
-        }
-        for (int i=0; i<iterations; i++){ 
-            String prompt = null; 
-           if (gradientnorm>=tolerance){
+        double gradientnorm=0;
+        PrintWriter writer;
+        try{
+            if(fileName != null){
+                writer = new PrintWriter(fileName);
+                writer.format("Objective Function: %s", objectiveFunction.getName());
+                writer.format("\nDimensionality: %d", variables.length);
+                writer.write("\nInitial Point: ");
+                for (double variable : variables){
+                    writer.format("%.1f ", variable);
+                }
+                writer.format("\nIterations: %d", numIterations);
+                writer.format("\nTolerance: %.5f", tolerance);
+                writer.format("\nStep Size: %.5f", stepSize);
+            }else{
+                writer = null;
+                System.out.printf("\nObjective Function: %s", objectiveFunction.getName());
+                System.out.printf("\nDimensionality: %d", variables.length);
+                System.out.print("\nInitial Point: ");
+                for (double variable : variables){
+                    System.out.printf("%.1f ", variable);
+                }
+                System.out.printf("\nIterations: %d", numIterations);
+                System.out.printf("\nTolerance: %.5f", tolerance);
+                System.out.printf("\nStep Size: %.5f", stepSize);
+            }
+            for (int i=0; i<numIterations; i++){ 
+                int iteration = i+1;
+                String prompt = null; 
+                for (double variable: variables){
+                    variable = round(variable);
+                }
+                gradientnorm = round(gradientnorm);
+
+                if(iteration != 1 && gradientnorm<tolerance){
+                    prompt = "\nConvergence reached after "+ iteration + " iterations.\n";
+                    i=numIterations-1;
+                }
+                if(i==numIterations-1){
+                    prompt = "\nMaximum iterations reached without satisfying the tolerance.\n";
+                }
+                if(fileName != null){
+                    Output.printOutputs(iteration, round(objectiveFunction.compute(variables)), variables, prompt, gradientnorm, fileName, writer);
+                    if (i==numIterations-1){
+                        writer.write("\nOptimization process completed.\n");
+                        writer.close();
+                    }
+                }else{
+                    Output.printOutputs(iteration, round(objectiveFunction.compute(variables)), variables, prompt, gradientnorm, fileName);
+                    if (i==numIterations-1){
+                        System.out.print("\nOptimization process completed.\n");
+                    }        
+                }
+
                 for (int j=0; j<variables.length; j++){
                     variables[j]=variables[j]-(stepSize*gradients[j]);
                 }
-                gradients=objectiveFunction.computeGradient(variables);
                 gradientnorm=computeGradientNorm(gradients);
-            }else{
-                prompt = "\nConvergence reached after "+ (i) + " iterations.\n";
+                gradients=objectiveFunction.computeGradient(variables); 
             }
-            if(i==iterations-1){
-                prompt = "\nMaximum iterations reached without satisfying the tolerance.\n";
-            }
-
-            output.printOutputs(i+1, objectiveFunction.compute(variables), variables, prompt);
-        }
+            
+        }catch (FileNotFoundException e){}
         
         return variables;
-    }
+    }   
 
     static double computeGradientNorm(double[] gradients){
         
         double output=0;
         
-        for(int i=0; i<gradients.length; i++){
-            output+=gradients[i]*gradients[i];
+        for(double gradient : gradients){
+            output+=Math.pow(gradient, 2);
         }
 
         return Math.sqrt(output);
@@ -233,7 +291,6 @@ class SteepestDescentOptimizer{
                 inputs.function= new RosenbrockFunction();
             }else if(functionName.equals("quadratic")){
                 inputs.function= new QuadraticFunction();
-                System.out.println(functionName);
             }else{
                 throw new IllegalArgumentException("Unknown objective function.");
             }
@@ -270,58 +327,48 @@ class SteepestDescentOptimizer{
         return inputs;
     }
 
-    static OptimizationInputs getFileInput(Scanner scanner){
+    static OptimizationInputs getFileInput(String configFile){
         OptimizationInputs inputs = new OptimizationInputs();
         String functionName;
         inputs.isValid=true;
-        
+
         try{
-            functionName=scanner.nextLine();
-            System.out.println(functionName);
-            inputs.dimensionality=Integer.parseInt(scanner.nextLine());
-            inputs.iterations=Integer.parseInt(scanner.nextLine());
-            inputs.tolerance=Double.parseDouble(scanner.nextLine());
-            inputs.stepSize=Double.parseDouble(scanner.nextLine());
+            BufferedReader reader = new BufferedReader(new FileReader(configFile));
+            functionName=reader.readLine();
+            inputs.dimensionality=Integer.parseInt(reader.readLine());
+            inputs.iterations=Integer.parseInt(reader.readLine());
+            inputs.tolerance=Double.parseDouble(reader.readLine());
+            inputs.stepSize=Double.parseDouble(reader.readLine());
             if (functionName.equals("rosenbrock")){
                 inputs.function= new RosenbrockFunction();
             }else if(functionName.equals("quadratic")){
                 inputs.function= new QuadraticFunction();
-                System.out.println(functionName);
             }else{
+                reader.close();
                 throw new IllegalArgumentException("Unknown objective function.");
             }
-        }catch(IllegalArgumentException e){
-            System.out.printf("Error: " + e.getMessage());
-            inputs.isValid=false;
-        }
-
-        if (inputs.isValid == true){
-            try{
-                System.out.printf("\nEnter the initial point as %d space-separated values:", inputs.dimensionality);
-                inputs.variables=getVarsfromString(scanner.nextLine());
-
+            inputs.variables=getVarsfromString(reader.readLine());
                 if(inputs.variables.length != inputs.dimensionality){
+                    reader.close();
                     throw new IllegalArgumentException("Initial point dimensionality mismatch.");
                 }
 
                 double[] bounds={-5,5};
 
                 if(checkBounds(inputs.variables, bounds)!=0){
+                    reader.close();
                     throw new IllegalArgumentException("Bounds Exception");
                 }
-            }catch(IllegalArgumentException e){
-                if (e.getMessage()=="Bounds Exception"){
-                double[] bounds={-5,-5};
-                System.out.printf("Error: Initial point %.1f is outside the bounds [%.1f, %.1f]", checkBounds(inputs.variables, bounds), bounds[0], bounds[1]);
-                inputs.isValid=false;
-                }else{
-                    System.out.printf("Error: " + e.getMessage());
-                    inputs.isValid=false;
-                }
-            }
+                reader.close();
+        }catch(FileNotFoundException e){
+            System.out.println("Error reading the file");
+        }catch(IOException e){
+            System.out.println("Error reading the file");
+        }catch(IllegalArgumentException e){
+            System.out.printf("Error: " + e.getMessage());
+            inputs.isValid=false;
         }
         return inputs;
-        
     }
 
     static double[] getVarsfromString(String varsString){
@@ -343,24 +390,35 @@ public class asst2_eckhertn{
 
         Scanner scanner = new Scanner(System.in);
 
-        int start=SteepestDescentOptimizer.getValidatedInput(scanner, "Press 0 to exit or 1 to enter the program:");
-        OptimizationInputs inputs;
+        int start=SteepestDescentOptimizer.getValidatedInput(scanner, "Press 0 to exit or 1 to enter the program:"); //Prompt the user if they want to enter the program
 
         if (start == 1){
+            OptimizationInputs inputs;
+            String outputFile;
             int inputform=SteepestDescentOptimizer.getValidatedInput(scanner, "Press 0 for .txt input or 1 for manual input:");
             int outputform=SteepestDescentOptimizer.getValidatedInput(scanner, "Press 0 for .txt output or 1 for console output:");
             if (inputform==1){
                 inputs = SteepestDescentOptimizer.getManualInput(scanner);
             }else{
-                inputs = SteepestDescentOptimizer.getFileInput(scanner);
+                System.out.println("Please provide the path to the config file: ");
+                String configfile =scanner .nextLine();
+                inputs = SteepestDescentOptimizer.getFileInput(configfile);
+            }
+            if(outputform==1){
+                outputFile = null;
+            }else{
+                System.out.println("Please provide the path for the ouput file: ");
+                outputFile=scanner.nextLine();
             }
             if (inputs.isValid==true){
-                SteepestDescentOptimizer.optimizeSteepestDescent(inputs.function, inputs.variables, inputs.iterations, inputs.tolerance, inputs.stepSize, inputs.dimensionality, outputform);
+                SteepestDescentOptimizer.optimizeSteepestDescent(inputs.function, inputs.variables, inputs.iterations, inputs.tolerance, inputs.stepSize, inputs.dimensionality, outputFile);
             }
+        }else{
+            System.out.println("\nExiting Program...");
         }
 
 
-        System.out.println("\nExiting Program...");
+       
 
     }
 
