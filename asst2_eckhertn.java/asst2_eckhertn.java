@@ -31,10 +31,12 @@ abstract class ObjectiveFunction{
 
 class QuadraticFunction extends ObjectiveFunction{
 
+    //constructor that sets the name of Objective Function to reflect that its quadratic
     public QuadraticFunction(){
         super("Quadratic");
     }
 
+    //overrides the compute method to compute according to the quadratic function
     @Override
     double compute(double[] variables){
         double output=0;
@@ -44,6 +46,7 @@ class QuadraticFunction extends ObjectiveFunction{
         return output;
     }
 
+    //overrides the computeGradient method to compute according to the quadratic function gradients
     @Override
     double[] computeGradient(double[] variables){
         double[] outputs = new double[variables.length];
@@ -56,10 +59,12 @@ class QuadraticFunction extends ObjectiveFunction{
 
 class RosenbrockFunction extends ObjectiveFunction{
 
+    //constructor that sets the name of Objective Function to reflect that its rosenbrock
     public RosenbrockFunction(){
         super("Rosenbrock");
     }
 
+    //overrides the compute method according to the rosenbrock function
     @Override
     double compute(double[] variables){
         double output=0;
@@ -76,6 +81,8 @@ class RosenbrockFunction extends ObjectiveFunction{
         
         return output;
     }
+
+    //overrides the computeGradient method according to the incorrect rosenbrock gradients provided in the assignment instructions
     @Override
     double[] computeGradient(double[] variables){
         double[] outputs = new double[variables.length];
@@ -95,10 +102,13 @@ class RosenbrockFunction extends ObjectiveFunction{
 }
 
 class Rosenbrock_Bonus extends ObjectiveFunction{
+    
+    //constructor that sets the name of Objective Function to reflect that its rosenbrock bonus
     public Rosenbrock_Bonus(){
         super("Rosenbrock_Bonus");
     }
 
+    //overrides the compute method according to the rosenbrock function
     @Override
     double compute(double [] variables){
         double output=0;
@@ -116,6 +126,7 @@ class Rosenbrock_Bonus extends ObjectiveFunction{
         return output;
     }
 
+    //overrides the computeGradient method according to the correct rosenbrock gradients
     @Override
     double[] computeGradient(double[] variables){
         double[] outputs = new double[variables.length];
@@ -133,134 +144,180 @@ class Rosenbrock_Bonus extends ObjectiveFunction{
     }
 }
 
+//class that is used later as the output for the getFileInput and getManualInput methods so that they can pass the inputted values to my main
 class OptimizationInputs{
     
-    ObjectiveFunction function;
-    int dimensionality;
-    int iterations;
-    double tolerance;
-    double stepSize;
-    boolean isValid;
-    double[] variables; 
+    ObjectiveFunction function; //the function that will be minimized
+    int dimensionality; //the dimensionality, d, of the function
+    int iterations; //the maximum number of iterations of gradient descent
+    double tolerance; //the minimum tolerance epsilon, where when the magnitude of the gradient is less than it the optimizer will stop
+    double stepSize; //the learning rate which scales the gradient during gradient descent
+    boolean isValid; //records whether or not the input recieved is valid
+    double[] variables; //the initial starting point values to begin minimization at
 
 }
 
 class Output{
+
+    //method that handles outputs for console
     static public void printOutputs(int iteration, double OFValue, double[] x, String prompt, double gradientnorm, String fileName){
-        System.out.println();
+        System.out.println();//prints newline
+        
+        //prints header "Optimization process:" during first iteration
         if (iteration==1){
-            System.out.print("\n\nOptimization Process:");
+            System.out.print("\n\nOptimization process:");
             System.out.print("\nIteration 1:");
         }else{
-            System.out.printf("\n\nIteration %d:", iteration);
+            System.out.printf("\n\nIteration %d:", iteration);//prints current iteration number
         }
-        System.out.printf("\nObjective Function Value: %.5f", OFValue);
+        System.out.printf("\nObjective Function Value: %.5f", OFValue);//prints current Objective Function value
         System.out.print("\nx-values: ");
+        
+        //prints current x-values
         for (double value : x){
             System.out.printf("%.5f ", value);
         }
+
+        //prints current tolerance/gradient magnitude value
         if (iteration != 1){
         System.out.printf("\nCurrent Tolerance: %.5f", gradientnorm);
         }
+
+        //if there is an additional output, then it is printed
         if (prompt != null){
             System.out.print("\n"+prompt);
         }
     }
 
+    //method that handles outputs to a file 
     static public void printOutputs(int iteration, double OFValue, double[] x, String prompt, double gradientnorm, String fileName, PrintWriter writer){
+        
+        //writes header "Optimization process:" during first iteration
         if (iteration==1){
-            writer.write("\n\nOptimization Process:");
+            writer.write("\n\nOptimization process:");
             writer.write("\nIteration 1:");
         }else{
-            writer.format("\n\nIteration %d:", iteration);
+            writer.format("\n\nIteration %d:", iteration);//writes current iteration number
         }
-        writer.format("\nObjective Function Value: %.5f", OFValue);
+        writer.format("\nObjective Function Value: %.5f", OFValue);//writes current objective function value
         writer.format("\nx-values: ");
+
+        //writes current x-values
         for (double value : x){
             writer.format("%.5f ", value);
         }
+
+        //writes current tolerance/gradient magnitude value
         if (iteration != 1){
             writer.format("\nCurrent Tolerance: %.5f", gradientnorm);
         }
+
+        //if there is an additional output, then it is written
         if (prompt != null){
             writer.write("\n"+prompt);
         }
     }
 }
 
+//actual optimizer class that handles optimization and inputs
 class SteepestDescentOptimizer{
 
+    //rounding method used in order to match assignment outputs
     static double floorTo5Decimals(double value){
         BigDecimal bd = new BigDecimal(value).setScale(5, RoundingMode.FLOOR);
         return bd.doubleValue();
-        //double scale = Math.pow(10,5);
-        //return Math.round(value * scale)/scale;
     }
+
+    //optimizer method that applies steepest descent to objective function values
     static double[] optimizeSteepestDescent(ObjectiveFunction objectiveFunction, double[] variables, int numIterations, double tolerance, double stepSize, int dimensionality, String fileName){
         
-        double[] gradients=objectiveFunction.computeGradient(variables);
-        double gradientnorm=0;
-        PrintWriter writer;
+        double[] gradients=objectiveFunction.computeGradient(variables); //obtains the initial gradients for objective function values
+        double gradientnorm=0;//initializes a variable to represent the gradients magnitude
+        PrintWriter writer;//creates a writer to be used for file output
         try{
+            //if the fileName is not null (it holds an actual value), then we initialize writer and write initial info to the file
             if(fileName != null){
-                writer = new PrintWriter(fileName);
-                writer.format("Objective Function: %s", objectiveFunction.getName());
-                writer.format("\nDimensionality: %d", variables.length);
+                writer = new PrintWriter(fileName);//initializes writer as a new PrintWriter
+                writer.format("Objective Function: %s", objectiveFunction.getName());//writes the objective function name
+                writer.format("\nDimensionality: %d", variables.length);//writes the dimensionality
                 writer.write("\nInitial Point: ");
+
+                //writes the initial point values
                 for (double variable : variables){
                     writer.format("%.1f ", variable);
                 }
-                writer.format("\nIterations: %d", numIterations);
-                writer.format("\nTolerance: %.5f", tolerance);
-                writer.format("\nStep Size: %.5f", stepSize);
+
+                writer.format("\nIterations: %d", numIterations);//writes the max number of iterations
+                writer.format("\nTolerance: %.5f", tolerance);//writes the minimum tolerance
+                writer.format("\nStep Size: %.5f", stepSize);//writes the learning rate
+            
+            //if the fileName is null, we print initial info to the console
             }else{
-                writer = null;
-                System.out.printf("Objective Function: %s", objectiveFunction.getName());
-                System.out.printf("\nDimensionality: %d", variables.length);
+                writer = null;//set the writer to null to avoid errors
+                System.out.printf("Objective Function: %s", objectiveFunction.getName());//prints the objective function name
+                System.out.printf("\nDimensionality: %d", variables.length);//prints the dimensionality
                 System.out.print("\nInitial Point: ");
+
+                //prints the initial point values
                 for (double variable : variables){
                     System.out.printf("%.1f ", variable);
                 }
-                System.out.printf("\nIterations: %d", numIterations);
-                System.out.printf("\nTolerance: %.5f", tolerance);
-                System.out.printf("\nStep Size: %.5f", stepSize);
-            }
-            for (int i=0; i<numIterations; i++){ 
-                int iteration = i+1;
-                String prompt = null; 
-                for (int j =0; j<variables.length; j++){
-                    variables[j] = floorTo5Decimals(variables[j]);
-                    gradients[j] = floorTo5Decimals(gradients[j]);
-                }
-                gradientnorm = floorTo5Decimals(gradientnorm);
 
+                System.out.printf("\nIterations: %d", numIterations);//prints the max number of iterations
+                System.out.printf("\nTolerance: %.5f", tolerance);//prints the minimum tolerance
+                System.out.printf("\nStep Size: %.5f", stepSize);//prints the learning rate
+            }
+            
+            //Begins optimization by repeating gradient descent until the max iterations is reached or the gradient norm passes below the min tolerance
+            for (int i=0; i<numIterations; i++){ 
+                
+                int iteration = i+1;//set the iteration as 1 more than i (for outputs), since Java is zero indexed
+                String prompt = null;//set the prompt as null until there is an actual prompt
+
+                //check if the gradient norm has passed under the tolerance (not for iteration 1 since there is no gradient norm yet)
                 if(iteration != 1 && gradientnorm<tolerance){
-                    prompt = "\nConvergence reached after "+ iteration + " iterations.\n";
-                    i=numIterations-1;
+                    prompt = "\nConvergence reached after "+ iteration + " iterations.\n";//set the prompt to show that convergence was reached
+                    i=numIterations-1;//set i to max iterations -1 to break the loop on next iteration
+                
+                //check if we have reached the last iteration
                 }else if(i==numIterations-1){
-                    prompt = "\nMaximum iterations reached without satisfying the tolerance.\n";
+                    prompt = "\nMaximum iterations reached without satisfying the tolerance.\n";//set the prompt to show that we have reached the max iterations without convergance
                 }
+
+                //if fileName is not null, we write our outputs for the current iteration to the file
                 if(fileName != null){
-                    Output.printOutputs(iteration, floorTo5Decimals(objectiveFunction.compute(variables)), variables, prompt, floorTo5Decimals(gradientnorm), fileName, writer);
+                    Output.printOutputs(iteration, floorTo5Decimals(objectiveFunction.compute(variables)), variables, prompt, gradientnorm, fileName, writer);//writes outputs to file
+                    
+                    //if we have reached the maximum number of iterations or convergence, then we write the final message 
                     if (i==numIterations-1){
-                        writer.write("\nOptimization process completed.\n");
-                        writer.close();
+                        writer.write("\nOptimization process completed.\n");//write final message
+                        writer.close();//close the writer to avoid error and since we no longer use it
                     }
+
+                //if we are printing to console, we need to print the outputs for the current iteration to the console
                 }else{
-                    Output.printOutputs(iteration, floorTo5Decimals(objectiveFunction.compute(variables)), variables, prompt, floorTo5Decimals(gradientnorm), fileName);
+                    Output.printOutputs(iteration, floorTo5Decimals(objectiveFunction.compute(variables)), variables, prompt, gradientnorm, fileName);//prints outputs to console
+                    
+                    //if we have reached the maximum number of iterations or convergence, then we print the final message
                     if (i==numIterations-1){
-                        System.out.print("\nOptimization process completed.\n");
+                        System.out.print("\nOptimization process completed.\n");//print final message
                     }        
                 }
 
+                //update the variables using gradient descent and round them for the next iteration 
                 for (int j=0; j<variables.length; j++){
                     variables[j]=variables[j]-(stepSize*gradients[j]);
+                    variables[j] = floorTo5Decimals(variables[j]);
                 }
-                gradientnorm=computeGradientNorm(gradients);
-                gradients=objectiveFunction.computeGradient(variables);
+
+                gradientnorm=floorTo5Decimals(computeGradientNorm(gradients));//calculates and rounds the current gradient norm
+                gradients=objectiveFunction.computeGradient(variables);//calculates the gradients for the new variable values
             }
-            
-        }catch (FileNotFoundException e){}
+        
+        //catches any errors relating to the print writer and file output    
+        }catch (IOException e){
+            System.out.println("Error writing the file.");
+        }
         
         return variables;
     }   
@@ -385,6 +442,8 @@ class SteepestDescentOptimizer{
                 inputs.function= new RosenbrockFunction();
             }else if(functionName.equals("quadratic")){
                 inputs.function= new QuadraticFunction();
+            }else if(functionName.equals("rosenbrock_bonus")){
+                inputs.function = new Rosenbrock_Bonus();
             }else{
                 reader.close();
                 throw new IllegalArgumentException("Unknown objective function.");
@@ -449,14 +508,14 @@ public class asst2_eckhertn{
                 inputs = SteepestDescentOptimizer.getManualInput(scanner);
             }else{
                 System.out.println("Please provide the path to the config file: ");
-                String configfile =scanner .nextLine();
+                String configfile =scanner.nextLine();
                 inputs = SteepestDescentOptimizer.getFileInput(configfile);
             }
             if (inputs.isValid==true){
                 if(outputform==1){
                     outputFile = null;
                 }else{
-                    System.out.println("Please provide the path for the ouput file: ");
+                    System.out.println("Please provide the path for the output file: ");
                     outputFile=scanner.nextLine();
                 }
         
