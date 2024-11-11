@@ -171,7 +171,7 @@ class Output{
         
         //prints current x-values
         for (double value : x){
-            System.out.printf("%.5f ", SteepestDescentOptimizer.floorTo5Decimals(value));
+            System.out.printf("%.5f ", value);
         }
 
         //prints current tolerance/gradient magnitude value
@@ -200,7 +200,7 @@ class Output{
 
         //writes current rounded x-values
         for (double value : x){
-            writer.format("%.5f ", SteepestDescentOptimizer.floorTo5Decimals(value));
+            writer.format("%.5f ", value);
         }
 
         //writes current tolerance/gradient magnitude value
