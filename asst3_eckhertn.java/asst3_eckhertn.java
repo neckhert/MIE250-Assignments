@@ -83,12 +83,13 @@ class Difference extends Matrix {
 
 class ioInformation {
     String inputFile;
+    boolean isInputFile=false;
     String outputFile;
-    String executionMode;
+    String executionMode="standard";
 }
 
-class doDoolittle {
-    static Matrix readInputMatrix(String inputFile) throws IOException {
+class Doolittle {
+    Matrix readInputMatrix(String inputFile) throws IOException {
 
         BufferedReader reader = new BufferedReader(new FileReader(inputFile));
         ArrayList<String> rows = new ArrayList<String>();
@@ -117,7 +118,7 @@ class doDoolittle {
 
     }
 
-    static void dolittleAlgorithm(Matrix A, Lower L, Upper U) {
+    void dolittleAlgorithm(Matrix A, Lower L, Upper U) {
         int n = A.n;
 
         for (int i = 0; i < n; i++) {
@@ -144,7 +145,7 @@ class doDoolittle {
         }
     }
 
-    static double[] matMultSquares(double[] A, double[] B) {
+    double[] matMultSquares(double[] A, double[] B) {
         int n = (int) Math.sqrt(A.length);
         double[] C = new double[n * n];
         for (int i = 0; i < n; i++) {
@@ -158,7 +159,7 @@ class doDoolittle {
         return C;
     }
 
-    static Difference computeDifferenceMatrix(Matrix A, Lower L, Upper U) {
+    Difference computeDifferenceMatrix(Matrix A, Lower L, Upper U) {
         int n = A.n;
         Difference D = new Difference(n);
         double[] B = matMultSquares(L.values, U.values);
@@ -171,9 +172,12 @@ class doDoolittle {
         return D;
     }
 
-    static void writeOutputs(ioInformation io, Matrix A, Lower L, Upper U, Difference D) {
+    void writeOutputs(ioInformation io, Matrix A, Lower L, Upper U, Difference D) {
         try {
             BufferedWriter writer = new BufferedWriter(new FileWriter(io.outputFile));
+            if (!io.isInputFile){
+                writer.write("No input file specified. Using default: input.txt\n");
+            }
             writer.write(String.format("Input file: %s", io.inputFile));
             writer.write(String.format("\nOutput file: %s", io.outputFile));
             writer.write(String.format("\nExecution mode: %s\n", io.executionMode));
@@ -203,7 +207,7 @@ class doDoolittle {
 
     // method that takes a string and returns an array by seperating each value by
     // spaces
-    static double[] getVarsfromString(String varsString) {
+    double[] getVarsfromString(String varsString) {
         String[] separatedVarsString = varsString.split(" ");// creates an array of strings by splitting the current
                                                              // string at every space
         double[] outputs = new double[separatedVarsString.length];// initializing a new array of doubles with the same
@@ -218,19 +222,86 @@ class doDoolittle {
     }
 }
 
+class parallelDoolittle extends Doolittle{
+    
+    @Override
+    void dolittleAlgorithm(Matrix A, Lower L, Upper U) {
+        int n = A.n;
+        int numThreads = Runtime.getRuntime().availableProcessors();
+        Thread[] threads = new Thread[numThreads];
+        
+        int chunkSize = n / numThreads;
+
+        for (int i=0; i < numThreads; i++){
+            final int startRow = i* chunkSize;
+            final int endRow = (i==numThreads-1) ? n : startRow + chunkSize;
+
+            threads[i] = new Thread(()->{
+                for (int row = startRow; row < endRow; row++) {
+                    for (int j = 0; j < n; j++) {
+                        double nextVal = 0;
+                        for (int k = 0; k < row; k++) {
+                        nextVal += L.values[n * row + k] * U.values[n * k + j];
+                    }
+                    U.values[n * row + j] = A.values[n * row + j] - nextVal;
+                    }
+
+                    for (int j = row; j < n; j++) {
+                        double nextVal = 0;
+                        for (int k = 0; k < row; k++) {
+                        nextVal += L.values[j * n + k] * U.values[k * n + row];
+                        }
+                        L.values[n * j + row] = (A.values[j * n + row] - nextVal) / U.values[row * n + row];
+                    }
+
+                    if (U.values[row * n + row] == 0) {
+                        U.error = "\nError: Matrix is singular, cannot perform decomposition.";
+                        break;
+                    }
+                }   
+            });
+            threads[i].start();
+        }
+
+        for (Thread thread : threads){
+            try{
+                thread.join();
+            }catch(InterruptedException e){
+                e.printStackTrace();
+            }
+        }
+    }
+}
+    
+
 public class asst3_eckhertn {
     public static void main(String[] args) {
         try {
             ioInformation io = new ioInformation();
             io.inputFile = "input.txt";
+            if (args.length != 0){
+                io.inputFile = args[0];
+                io.isInputFile=true;
+            }
             io.outputFile = "output.txt";
-            io.executionMode = "standard";
-            Matrix A = doDoolittle.readInputMatrix("input.txt");
+            BufferedReader reader = new BufferedReader(new FileReader("config.txt"));   
+            String line = reader.readLine();
+            if (line.equals("parallel_execution=true")){
+                io.executionMode="parallel";
+            }
+            reader.close();
+            Doolittle alg;
+            if (io.executionMode.equals("parallel")){
+                alg = new parallelDoolittle();
+            }else{
+                alg = new Doolittle();
+            }
+            Matrix A = alg.readInputMatrix(io.inputFile);
             Lower L = new Lower(A.n);
             Upper U = new Upper(A.n);
-            doDoolittle.dolittleAlgorithm(A, L, U);
-            Difference D = doDoolittle.computeDifferenceMatrix(A, L, U);
-            doDoolittle.writeOutputs(io, A, L, U, D);
+            alg.dolittleAlgorithm(A, L, U);
+            Difference D = alg.computeDifferenceMatrix(A, L, U);
+            alg.writeOutputs(io, A, L, U, D);
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }

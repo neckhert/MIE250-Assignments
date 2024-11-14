@@ -1,10 +1,35 @@
-Input file: input.txt
+Input file: input3.txt
 Output file: output.txt
 Execution mode: standard
 
 Matrix A:
-2.0 4.0 6.0 
-1.0 2.0 3.0 
-3.0 6.0 9.0 
+10.5 0.5 0.3 0.1 0.2 
+0.2 10.9 0.5 0.3 0.5 
+0.5 0.5 11.0 0.2 0.3 
+0.4 0.4 0.6 10.7 0.4 
+0.2 0.5 0.4 0.4 10.4 
 
-Error: Matrix is singular, cannot perform decomposition.
+Final Matrix L:
+1.0 0.0 0.0 0.0 0.0 
+0.0 1.0 0.0 0.0 0.0 
+0.0 0.0 1.0 0.0 0.0 
+0.0 0.0 0.1 1.0 0.0 
+0.0 0.0 0.0 0.0 1.0 
+
+Final Matrix U:
+10.5 0.5 0.3 0.1 0.2 
+-0.0 10.9 0.5 0.3 0.5 
+-0.0 0.0 11.0 0.2 0.3 
+0.0 0.0 0.0 10.6 0.4 
+0.0 0.0 0.0 0.0 10.3 
+
+Difference Matrix (A - LU):
+0.0000 0.0000 0.0000 0.0000 0.0000 
+0.0000 0.0000 0.0000 0.0000 0.0000 
+0.0000 0.0000 0.0000 0.0000 0.0000 
+0.0000 0.0000 0.0000 0.0000 0.0000 
+0.0000 0.0000 0.0000 0.0000 0.0000 
+
+Tolerance (difference between A and LU): 0.0000
+
+Decomposition complete. Results written to output.txt
