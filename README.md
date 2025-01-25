@@ -1,0 +1,1 @@
+Assignments for MIE250 an object oriented programming course at University of Toronto. Assignment 1 is simple error handling with spring calculations. Assignment 2 demonstrates a simple optimization class which uses steepest descent. Assignment 3 performs LU factorization on any square matrix and utilizes both sequential and parallel (threaded) computation methods.
